@@ -19,7 +19,7 @@ const FORBIDDEN = new Set([
 
 // The compiled test lives in dist/test: the repository root is two levels up.
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const SKIP = new Set([".git", "node_modules", "dist", "eval-results", "data"]);
+const SKIP = new Set([".git", "node_modules", "dist", "eval-results", "data", "bin", "tmp"]);
 
 function files(): Map<string, string> {
   const out = new Map<string, string>();
@@ -28,7 +28,11 @@ function files(): Map<string, string> {
       if (SKIP.has(e.name)) continue;
       const p = path.join(dir, e.name);
       if (e.isDirectory()) walk(p);
-      else out.set(path.relative(ROOT, p).split(path.sep).join("/"), fs.readFileSync(p, "utf8"));
+      else {
+        const bytes = fs.readFileSync(p);
+        if (bytes.includes(0)) continue; // a binary file, such as a downloaded tool: not ours to scan
+        out.set(path.relative(ROOT, p).split(path.sep).join("/"), bytes.toString("utf8"));
+      }
     }
   };
   walk(ROOT);
