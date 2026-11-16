@@ -1,0 +1,7 @@
+{
+  "tsunagu": { "database": "data/tsunagu.duckdb" },
+  "koyomi": { "binary": "bin/koyomi" },
+  "kensa": { "binary": "bin/kensa", "allowedHosts": ["127.0.0.1", "localhost"], "maxPages": 200 },
+  "limits": { "rows": 200, "timeoutSeconds": 15 },
+  "auditLog": "logs/audit.jsonl"
+}

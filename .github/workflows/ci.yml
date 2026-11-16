@@ -1,0 +1,92 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Tsunagu, pinned: the fictional CRM world the server and the benchmark run on.
+  TSUNAGU: git+https://github.com/thibaultbordrie-cloud/tsunagu@19b3cb2dcb377caa6c5e8fc991819f59986ff502
+  MADOGUCHI_TEST_DB: data/tiny.duckdb
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: ["22"]
+        include:
+          - os: ubuntu-latest
+            node: "24"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Generate a small Tsunagu world
+        shell: bash
+        run: |
+          python -m pip install --quiet "tsunagu @ $TSUNAGU"
+          tsunagu generate --scenario tiny --out data/tiny.duckdb
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Prove every lock holds
+        run: node dist/src/cli.js check --tsunagu data/tiny.duckdb --no-audit-log
+
+  benchmark:
+    # The whole system: Madoguchi with Koyomi (Go) and Kensa (Rust) from their releases, and the oracle
+    # scored against the independent answer key. Anything below 100 % fails the build.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Generate the Tsunagu worlds
+        run: |
+          python -m pip install --quiet "tsunagu @ $TSUNAGU"
+          tsunagu generate --scenario tiny --out data/tiny.duckdb
+          tsunagu generate --scenario standard --out data/standard.duckdb
+      - name: Download Koyomi and Kensa
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p bin tmp
+          gh release download v0.1.0 --repo thibaultbordrie-cloud/koyomi --pattern 'koyomi-v0.1.0-linux-amd64.tar.gz' --dir tmp
+          gh release download v0.1.0 --repo thibaultbordrie-cloud/kensa --pattern 'kensa-v0.1.0-x86_64-unknown-linux-gnu.tar.gz' --dir tmp
+          for f in tmp/*.tar.gz; do tar xzf "$f" -C tmp; done
+          cp tmp/koyomi-*/koyomi tmp/kensa-*/kensa bin/
+          bin/koyomi events -market kr -year 2027 | head -3
+      - run: npm ci
+      - run: npm run build
+      - name: Tests with every tool
+        env:
+          MADOGUCHI_TEST_KOYOMI: bin/koyomi
+          MADOGUCHI_TEST_KENSA: bin/kensa
+        run: npm test
+      - name: Oracle on the two-year world
+        run: |
+          node dist/src/cli.js eval --runner oracle --tsunagu data/standard.duckdb --koyomi bin/koyomi --kensa bin/kensa \
+            --out eval-results --min-accuracy 100
+          cat eval-results/report.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: eval-results
+          path: eval-results

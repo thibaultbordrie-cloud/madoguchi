@@ -1,0 +1,11 @@
+/node_modules
+/dist
+/data
+/eval-results
+/bin
+*.duckdb
+*.duckdb.wal
+*.jsonl
+.env
+secrets.env
+madoguchi.json

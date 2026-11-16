@@ -1,0 +1,45 @@
+{
+  "name": "madoguchi",
+  "version": "0.1.0",
+  "description": "A read-only MCP server that gives AI agents governed access to a CRM warehouse, a commercial calendar and an SEO auditor, with a benchmark that scores them against a known answer key.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "madoguchi": "dist/src/cli.js"
+  },
+  "files": [
+    "dist/src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.10"
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "test": "node --test --test-concurrency=1 \"dist/test/*.test.js\"",
+    "check": "node dist/src/cli.js check",
+    "eval": "node dist/src/cli.js eval"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thibaultbordrie-cloud/madoguchi.git"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-agents",
+    "crm",
+    "duckdb",
+    "evaluation"
+  ],
+  "dependencies": {
+    "@duckdb/node-api": "2.0.0-r.1",
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "22.19.1",
+    "typescript": "6.0.3"
+  }
+}
